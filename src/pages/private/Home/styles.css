@@ -1,0 +1,4 @@
+.pac-container {
+    z-index: 2000 !important; /* Valor mais alto que o do modal */
+  }
+  

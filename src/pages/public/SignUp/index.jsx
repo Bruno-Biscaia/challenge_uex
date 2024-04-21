@@ -43,7 +43,7 @@ export default function SignUp() {
     if (!users.some((user) => user.email === userDetails.email)) {
       // Verifica se o email já existe
       users.push({
-        nome: userDetails.nome,
+        nome: userDetails.nome,        
         email: userDetails.email,
         senha: userDetails.senha, // Nota: Armazenar senhas em texto puro é inseguro, considere usar hashing.
       });
