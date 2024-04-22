@@ -9,7 +9,7 @@ Este projeto é um sistema de gerenciamento de contatos que permite aos usuário
 - **APIs**: Via Cep para consulta de endereços e Google Maps para obtenção de coordenadas geográficas.
 
 ## Instalação
-Clone o repositório usando: git clone [URL_DO_REPOSITORIO](https://github.com/Bruno-Biscaia/challenge_uex/edit/main/README.md)
+Clone o repositório usando: git clone https://github.com/Bruno-Biscaia/challenge_uex
 
 Para instalar dependencias: 
 npm install
