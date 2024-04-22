@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import CheckIcon from "@mui/icons-material/Check";
 import { Autocomplete, LoadScript } from "@react-google-maps/api";
 import { GoogleMap, Marker } from "@react-google-maps/api";
 import SortIcon from "@mui/icons-material/Sort";
@@ -13,40 +12,40 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  DialogContentText,
   Grid,
   Paper,
-  InputAdornment,
 } from "@mui/material";
 import { Delete as DeleteIcon, Edit as EditIcon } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../Contexts/AuthContext";
+
+import {
+  isValidCPF,
+  isValidEmail,
+  isValidPhone,
+  validateCep,
+} from "../../../utils/Validators/inputValidator";
+
 import "./styles.css";
+import Modal from "../../../components/Modal";
+import DataPersonalForm from "../../../components/DataPersonalForm";
+import FormTextField from "../../../components/AddressForm";
 
 export default function Home() {
-  const { logout, currentUser } = useAuth();
   const navigate = useNavigate();
-  const [loadScriptKey, setLoadScriptKey] = useState(0);
-  const [mapLocation, setMapLocation] = useState({
-    lat: -25.4296, // Coordenadas de Curitiba
-    lng: -49.2716,
-    // label: "",
-  });
 
+  //Estados de contexto global
+  const { logout, currentUser } = useAuth();
+
+  //Estado que controla os contatos salvos
   const [contacts, setContacts] = useState(() => {
     const savedContacts = localStorage.getItem("contacts");
     return savedContacts ? JSON.parse(savedContacts) : [];
   });
 
-  console.log(contacts);
-
+  //Estados que controlam as buscas e ordenaçoes da lista de contatos
   const [searchTerm, setSearchTerm] = useState("");
   const [sortAscending, setSortAscending] = useState(true);
-
   const handleToggleSort = () => {
     setSortAscending(!sortAscending);
   };
@@ -69,8 +68,79 @@ export default function Home() {
     setSearchTerm(event.target.value);
   };
 
-  console.log("MAPLOCATION", mapLocation);
+  //Estados que validam as informacoes dos inputs
+  const [validationErrors, setValidationErrors] = useState({});
+  const [error, setError] = useState("");
+  const validateContact = () => {
+    let errors = {};
+    if (!isValidCPF(currentContact.cpf)) {
+      errors.cpf = "CPF inválido.";
+    }
+    if (!isValidEmail(currentContact.email)) {
+      errors.email = "Email inválido.";
+    }
+    if (!isValidPhone(currentContact.phone)) {
+      errors.phone = "Telefone inválido. Deve ter 10 ou 11 dígitos.";
+    }
+    if (!currentContact.name.trim()) {
+      errors.name = "Nome não pode ser vazio";
+    }
+    if (contacts.some((contact, index) => contact.cpf === currentContact.cpf && index !== currentIndex)) {
+    errors.cpf = "CPF já cadastrado.";
+    }
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
+  //Array de objetos para alimentar componente de endereço
+  const fieldAddress = [
+    {
+      name: "cep",
+      placeholder: "CEP",
+      disabled: true,
+      label: "",
+      xs: 12,
+      cepValid: true,
+    },
+    {
+      name: "address",
+      placeholder: "Endereço",
+      disabled: true,
+      label: "",
+      xs: 12,
+    },
+    {
+      name: "number",
+      placeholder: "Número",
+      disabled: false,
+      label: "Numero",
+      xs: 12,
+    },
+    {
+      name: "neighborhood",
+      placeholder: "Bairro",
+      disabled: true,
+      label: "",
+      xs: 12,
+    },
+    { name: "city", placeholder: "Cidade", disabled: true, label: "", xs: 12 },
+    { name: "country", placeholder: "País", disabled: true, label: "", xs: 12 },
+  ];
+
+  //Validaçao de CEP
+  const [cepValid, setCepValid] = useState(false);
+
+  //Estados para controlar o carregamento do LoadScript do Autocomplete da API do Google
+  const [loadScriptKey, setLoadScriptKey] = useState(0);
+
+  //Estado que contola latitude e longitude para o mapa do google maps
+  const [mapLocation, setMapLocation] = useState({
+    lat: -25.4296, // Coordenadas de Curitiba
+    lng: -49.2716,
+    // label: "",
+  });
+
+  //Estado que controla abertura de modal
   const [openDialog, setOpenDialog] = useState(false);
   const [currentContact, setCurrentContact] = useState({
     name: "",
@@ -86,37 +156,30 @@ export default function Home() {
     latitude: "",
     longitude: "",
   });
+
+  //Estado que controla abertura do modal de exclusao de contas
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [accountPassword, setAccountPassword] = useState("");
+  const handleDeleteAccount = () => {
+    if (accountPassword === currentUser?.password) {
+      localStorage.clear();
+      logout();
+      navigate("/");
+      setDeleteAccountOpen(false);
+      setAccountPassword("");
+    } else {
+      setError("Senha incorreta!");
+    }
+  };
+
+  //Estados que controlam abertura de modal e confirmaçao para exclusao de contatos
   const [editMode, setEditMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [validationErrors, setValidationErrors] = useState({});
-
-  const [cepValid, setCepValid] = useState(false);
-  const validateCep = async (cep) => {
-    if (cep?.length === 8) {
-      try {
-        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        const data = await response.json();
-        if (!data.erro) {
-          setCepValid(true);
-          return true;
-        }
-      } catch (error) {
-        console.error("Erro ao validar CEP:", error);
-      }
-    }
-    setCepValid(false);
-    return false;
-  };
 
   const handlePlaceSelect = async (autocomplete) => {
     const place = autocomplete.getPlace();
-    if (!place.geometry) {
-      alert("No details available for input: " + place.name);
-      return;
-    }
 
     const fullAddress = place.formatted_address;
     const components = place.address_components;
@@ -126,7 +189,7 @@ export default function Home() {
     const lng = position.lng();
 
     if (!lat || !lng) {
-      console.error("Invalid latitude or longitude values.");
+      console.error("Valores de longitude ou latitude inválidosinválidos");
       return;
     }
 
@@ -143,7 +206,7 @@ export default function Home() {
     const country =
       components.find((c) => c.types.includes("country"))?.long_name || "";
 
-    await validateCep(cep.replace(/\D/g, ""));
+    await validateCep(cep.replace(/\D/g, ""), setCepValid);
 
     setMapLocation({
       lat: lat,
@@ -151,10 +214,9 @@ export default function Home() {
       label: `${currentContact.number}`,
     });
 
-    // Atualiza apenas os campos relacionados ao endereço
     setCurrentContact((prev) => ({
       ...prev,
-      fullAddress: fullAddress, // Ajuste com base na sua lógica de estado
+      fullAddress: fullAddress,
       address: street,
       cep: cep,
       neighborhood: neighborhood,
@@ -169,45 +231,6 @@ export default function Home() {
   const handleLogout = () => {
     logout();
     navigate("/");
-  };
-
-  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const [accountPassword, setAccountPassword] = useState("");
-  const handleDeleteAccount = () => {
-    if (accountPassword === currentUser?.password) {
-      localStorage.clear();
-      logout();
-      navigate("/");
-      setDeleteAccountOpen(false);
-      setAccountPassword("");
-    } else {
-      setError("Senha incorreta!");
-    }
-  };
-
-  const validateContact = (contact, index) => {
-    let errors = {};
-    // // Validate CPF
-    // if (!cpf.isValid(contact.cpf)) {
-    //   errors.cpf = "CPF inválido.";
-    // } else if (
-    //   contacts.some((c, idx) => c.cpf === contact.cpf && idx !== index)
-    // ) {
-    //   errors.cpf = "CPF duplicado.";
-    // }
-
-    // Validate Email
-    // if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
-    //   errors.email = "Email inválido.";
-    // }
-
-    // // Validate Phone
-    // if (!/^\d{10,11}$/.test(contact.phone)) {
-    //   errors.phone = "Telefone inválido. Deve ter 10 ou 11 dígitos.";
-    // }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
   };
 
   const handleOpenDialog = (
@@ -233,7 +256,7 @@ export default function Home() {
   };
 
   const handleAddOrEditContact = () => {
-    if (validateContact(currentContact, currentIndex)) {
+    if (validateContact()) { // Verifica se não há erros, incluindo CPF duplicado
       const updatedContacts = editMode
         ? contacts.map((c, idx) => (idx === currentIndex ? currentContact : c))
         : [...contacts, currentContact];
@@ -242,6 +265,7 @@ export default function Home() {
       handleCloseDialog();
     }
   };
+  
 
   const handleOpenDeleteConfirm = (index) => {
     setCurrentIndex(index);
@@ -277,19 +301,32 @@ export default function Home() {
     }));
   };
 
+  //UseEffect para monitorar e salvar os contatos
   useEffect(() => {
     localStorage.setItem("contacts", JSON.stringify(contacts));
   }, [contacts]);
 
+  //UseEffect para monitorar e salvar dados do usuário atual
   useEffect(() => {
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
   }, [currentUser]);
 
+  //UseEffect para monitorar e controlar o carregamento do loadScript
   useEffect(() => {
     if (openDialog) {
       setLoadScriptKey((prevKey) => prevKey + 1); // Incrementa a chave para forçar o recarregamento do LoadScript
     }
   }, [openDialog]);
+
+  //UseEffect para monitorar e controlar o carregamento das validaçoes de input
+  useEffect(() => {
+    validateContact();
+  }, [
+    currentContact.cpf,
+    currentContact.email,
+    currentContact.phone,
+    currentContact.name,
+  ]);
 
   return (
     <>
@@ -300,7 +337,7 @@ export default function Home() {
           marginBottom: "10px",
         }}
       >
-      <Button
+        <Button
           variant="contained"
           color="error"
           onClick={() => setDeleteAccountOpen(true)}
@@ -318,43 +355,6 @@ export default function Home() {
         </Button>
       </div>
 
-      <Dialog
-        open={deleteAccountOpen}
-        onClose={() => setDeleteAccountOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Confirmação de Exclusão de Conta</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Insira sua senha para confirmar a exclusão da conta.
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Senha"
-            type="password"
-            fullWidth
-            value={accountPassword}
-            onChange={(e) => setAccountPassword(e.target.value)}
-            error={!!error}
-            helperText={error}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteAccountOpen(false)} color="primary">
-            Cancelar
-          </Button>
-          <Button onClick={handleDeleteAccount} color="secondary">
-            Confirmar Exclusão
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-
-
-
-
       <Typography variant="h4" gutterBottom>
         Gerenciador de Contatos
       </Typography>
@@ -367,9 +367,9 @@ export default function Home() {
         Adicionar Contato
       </Button>
 
+{/* Tabela com duas colunas para Contatos e Mapa */}
       <Grid container spacing={2}>
         {/* Coluna de Contatos */}
-
         <Grid item xs={6}>
           <Paper
             style={{
@@ -437,10 +437,6 @@ export default function Home() {
                         lng: contact.longitude,
                         label: contact.number,
                       });
-                      // Remova o alert se não desejar mais utilizá-lo
-                      alert(
-                        `Latitude: ${contact.latitude}, Longitude: ${contact.longitude}, Label: ${contact.number}`
-                      );
                     }}
                     style={{ cursor: "pointer" }}
                   />
@@ -496,160 +492,91 @@ export default function Home() {
         </Grid>
       </Grid>
 
-      <Dialog
+      {/* Modal para criar/editar contatos */}
+      <Modal
         open={openDialog}
-        onClose={handleCloseDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          {editMode ? "Editar Contato" : "Adicionar Contato"}
-        </DialogTitle>
-
-        <DialogContent id="dialog-content">
-          {["name", "email", "phone", "cpf"].map((field) => (
-            <TextField
-              key={field}
-              margin="dense"
-              label={field[0].toUpperCase() + field.slice(1)}
-              type="text"
-              fullWidth
-              name={field}
-              value={currentContact[field]}
+        close={handleCloseDialog}
+        title={editMode ? "Editar Contato" : "Adicionar Contato"}
+        children={
+          <>
+            <DataPersonalForm
+              fields={["name", "email", "phone", "cpf"]}
+              data={currentContact}
               onChange={handleChangeContact}
-              error={!!validationErrors[field]}
-              helperText={validationErrors[field]}
+              validationErrors={validationErrors}
             />
-          ))}
 
-          <LoadScript
-            key={loadScriptKey}
-            googleMapsApiKey="AIzaSyCaY_sFfo3DKewKbbSnYbNClmv4Q0DRqUg"
-            libraries={["places"]}
-          >
-            <Grid container spacing={2} style={{ marginTop: "10px" }}>
-              <Grid item xs={12}>
-                <Autocomplete
-                  onLoad={(autocomplete) => {
-                    autocomplete.setFields([
-                      "address_components",
-                      "formatted_address",
-                      "geometry",
-                    ]);
-                    autocomplete.addListener("place_changed", () =>
-                      handlePlaceSelect(autocomplete)
-                    );
+            <LoadScript
+              key={loadScriptKey}
+              googleMapsApiKey="AIzaSyCaY_sFfo3DKewKbbSnYbNClmv4Q0DRqUg"
+              libraries={["places"]}
+            >
+              <Grid container spacing={2} style={{ marginTop: "10px" }}>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    onLoad={(autocomplete) => {
+                      autocomplete.setFields([
+                        "address_components",
+                        "formatted_address",
+                        "geometry",
+                      ]);
+                      autocomplete.addListener("place_changed", () =>
+                        handlePlaceSelect(autocomplete)
+                      );
 
-                    // Ajustar o estilo do container do Autocomplete
-                    if (document.querySelector(".pac-container")) {
-                      document.querySelector(".pac-container").style.zIndex =
-                        "2000";
-                    }
-                  }}
-                >
-                  <TextField
-                    label="Buscar Endereço"
-                    value={currentContact.fullAddress}
+                      // Ajustar o estilo do container do Autocomplete
+                      if (document.querySelector(".pac-container")) {
+                        document.querySelector(".pac-container").style.zIndex =
+                          "2000";
+                      }
+                    }}
+                  >
+                    <TextField
+                      label="Buscar Endereço"
+                      value={currentContact.fullAddress}
+                      onChange={handleChangeContact}
+                      onFocus={() =>
+                        setCurrentContact((prev) => ({
+                          ...prev,
+                          fullAddress: "",
+                        }))
+                      } // Limpa o campo ao receber foco
+                      fullWidth
+                      variant="outlined"
+                      name="fullAddress"
+                    />
+                  </Autocomplete>
+                </Grid>
+                {fieldAddress.map((field) => (
+                  <FormTextField
+                    key={field.name}
+                    xs={field.xs}
+                    label={field.label}
+                    name={field.name}
+                    placeholder={field.placeholder}
+                    value={currentContact[field.name]}
                     onChange={handleChangeContact}
-                    onFocus={() =>
-                      setCurrentContact((prev) => ({
-                        ...prev,
-                        fullAddress: "",
-                      }))
-                    } // Limpa o campo ao receber foco
-                    fullWidth
-                    variant="outlined"
-                    name="fullAddress"
+                    disabled={field.disabled}
+                    cepValid={field.name === "cep" ? cepValid : undefined}
                   />
-                </Autocomplete>
+                ))}
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  placeholder="CEP"
-                  value={currentContact.cep}
-                  fullWidth
-                  variant="outlined"
-                  InputProps={{
-                    endAdornment: cepValid ? (
-                      <InputAdornment position="end">
-                        <CheckIcon color="success" />
-                      </InputAdornment>
-                    ) : null,
-                  }}
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  placeholder="Endereço"
-                  value={currentContact.address}
-                  fullWidth
-                  variant="outlined"
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Numero"
-                  name="number"
-                  value={currentContact.number}
-                  onChange={handleChangeContact}
-                  fullWidth
-                  variant="outlined"
-                />
-              </Grid>
+            </LoadScript>
+          </>
+        }
+        handleCancel={handleCloseDialog}
+        labelCancel={"Cancelar"}
+        handleConfirm={handleAddOrEditContact}
+        labelConfirm={editMode ? "Salvar" : "Adicionar"}
+      />
 
-              <Grid item xs={12}>
-                <TextField
-                  placeholder="Bairro"
-                  value={currentContact.neighborhood}
-                  fullWidth
-                  variant="outlined"
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  placeholder="Cidade"
-                  value={currentContact.city}
-                  fullWidth
-                  variant="outlined"
-                  disabled
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  placeholder="País"
-                  value={currentContact.country}
-                  fullWidth
-                  variant="outlined"
-                  disabled
-                />
-              </Grid>
-            </Grid>
-          </LoadScript>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">
-            Cancelar
-          </Button>
-          <Button onClick={handleAddOrEditContact} color="primary">
-            {editMode ? "Salvar" : "Adicionar"}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
+      {/* //Modal para exclusao de contato */}
+      <Modal
         open={deleteConfirmOpen}
-        onClose={handleCloseDeleteConfirm}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Confirmação de Exclusão</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Insira sua senha para confirmar a exclusão do contato.
-          </DialogContentText>
+        close={handleCloseDeleteConfirm}
+        title="Confirmação de Exclusão de Contato"
+        textContent=" Insira sua senha para confirmar a exclusão do contato."
+        children={
           <TextField
             autoFocus
             margin="dense"
@@ -661,16 +588,37 @@ export default function Home() {
             error={!!error}
             helperText={error}
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteConfirm} color="primary">
-            Cancelar
-          </Button>
-          <Button onClick={handleDeleteContact} color="secondary">
-            Confirmar Exclusão
-          </Button>
-        </DialogActions>
-      </Dialog>
+        }
+        handleCancel={handleCloseDeleteConfirm}
+        labelCancel={"Cancelar"}
+        handleConfirm={handleDeleteContact}
+        labelConfirm={"Confirmar Exclusão"}
+      />
+
+      {/* //Modal para exclusao da conta */}
+      <Modal
+        open={deleteAccountOpen}
+        close={() => setDeleteAccountOpen(false)}
+        title="Confirmação de Exclusão de Conta"
+        textContent="Insira sua senha para confirmar a exclusão da sua conta. Essa ação é irreversível!"
+        children={
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Senha"
+            type="password"
+            fullWidth
+            value={accountPassword}
+            onChange={(e) => setAccountPassword(e.target.value)}
+            error={!!error}
+            helperText={error}
+          />
+        }
+        handleCancel={() => setDeleteAccountOpen(false)}
+        labelCancel={"Cancelar"}
+        handleConfirm={handleDeleteAccount}
+        labelConfirm={"Confirmar Exclusão"}
+      />
     </>
   );
 }

@@ -1,13 +1,13 @@
 import React, { useState } from "react";
-import { TextField, Button, Typography } from "@mui/material";
+import { TextField, Button, Typography, Box  } from "@mui/material";
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../Contexts/AuthContext';  // Ajuste o caminho se necessário
+import { useAuth } from '../../../Contexts/AuthContext'; 
 
 export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const navigate = useNavigate();
-    const { login } = useAuth();  // Usar a função de login do contexto
+    const { login } = useAuth();  
 
     function authenticate(email, password) {
         const users = JSON.parse(localStorage.getItem('users')) || [];
@@ -18,19 +18,31 @@ export default function Login() {
         event.preventDefault();
         if (authenticate(email, password)) {
           alert("Usuário autenticado com sucesso.");
-          login(email, password);  // Usar a função de login do contexto
-          navigate('/home'); // Redirecionar para a página inicial ou dashboard
+          login(email, password);  
+          navigate('/home'); 
         } else {
           alert("Usuário não encontrado ou senha incorreta.");
         }
     }
 
     return (
-        <>
+         <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          boxShadow: 3,
+          padding: 3,
+          borderRadius: 1,
+          borderColor: 'grey.500',
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}>
           <Typography component="h1" variant="h5">
             Entrar
           </Typography>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 360 }}>
             <TextField
               variant="outlined"
               margin="normal"
@@ -70,6 +82,6 @@ export default function Login() {
           <div>
             Não tem uma conta? <Link to="/signup">Cadastre-se</Link>
           </div>
-        </>
+        </Box>
     );
 }
