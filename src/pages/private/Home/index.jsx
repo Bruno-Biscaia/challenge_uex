@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import CheckIcon from "@mui/icons-material/Check";
 import { Autocomplete, LoadScript } from "@react-google-maps/api";
+import { GoogleMap, Marker } from "@react-google-maps/api";
+import SortIcon from "@mui/icons-material/Sort";
+
 import {
   Typography,
   TextField,
@@ -27,11 +30,46 @@ import "./styles.css";
 export default function Home() {
   const { logout, currentUser } = useAuth();
   const navigate = useNavigate();
+  const [loadScriptKey, setLoadScriptKey] = useState(0);
+  const [mapLocation, setMapLocation] = useState({
+    lat: -25.4296, // Coordenadas de Curitiba
+    lng: -49.2716,
+    // label: "",
+  });
 
   const [contacts, setContacts] = useState(() => {
     const savedContacts = localStorage.getItem("contacts");
     return savedContacts ? JSON.parse(savedContacts) : [];
   });
+
+  console.log(contacts);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortAscending, setSortAscending] = useState(true);
+
+  const handleToggleSort = () => {
+    setSortAscending(!sortAscending);
+  };
+
+  const filteredContacts = contacts
+    .filter(
+      (contact) =>
+        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        contact.cpf.includes(searchTerm)
+    )
+    .sort((a, b) => {
+      if (sortAscending) {
+        return a.name.localeCompare(b.name);
+      } else {
+        return b.name.localeCompare(a.name);
+      }
+    });
+
+  const handleChangeSearchTerm = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  console.log("MAPLOCATION", mapLocation);
 
   const [openDialog, setOpenDialog] = useState(false);
   const [currentContact, setCurrentContact] = useState({
@@ -42,10 +80,11 @@ export default function Home() {
     address: "",
     cep: "",
     number: "",
-    complement: "",
     neighborhood: "",
     city: "",
     country: "",
+    latitude: "",
+    longitude: "",
   });
   const [editMode, setEditMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
@@ -54,16 +93,6 @@ export default function Home() {
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
 
-  const [fields, setFields] = useState({
-    fullAddress: "",
-    address: "",
-    cep: "",
-    neighborhood: "",
-    city: "",
-    country: "",
-  });
-  const [number, setNumber] = useState("");
-  const [complement, setComplement] = useState("");
   const [cepValid, setCepValid] = useState(false);
   const validateCep = async (cep) => {
     if (cep?.length === 8) {
@@ -84,17 +113,44 @@ export default function Home() {
 
   const handlePlaceSelect = async (autocomplete) => {
     const place = autocomplete.getPlace();
-    const fullAddress = place.formatted_address; // Endereço completo
+    if (!place.geometry) {
+      alert("No details available for input: " + place.name);
+      return;
+    }
+
+    const fullAddress = place.formatted_address;
     const components = place.address_components;
-  
-    const cep = components.find((c) => c.types.includes("postal_code"))?.long_name || "";
-    const street = components.find((c) => c.types.includes("route"))?.long_name || "";
-    const neighborhood = components.find((c) => c.types.includes("sublocality_level_1"))?.long_name || "";
-    const city = components.find((c) => c.types.includes("administrative_area_level_2"))?.long_name || "";
-    const country = components.find((c) => c.types.includes("country"))?.long_name || "";
-  
-    await validateCep(cep.replace(/\D/g, "")); // Validação de CEP
-  
+
+    const position = place.geometry.location;
+    const lat = position.lat();
+    const lng = position.lng();
+
+    if (!lat || !lng) {
+      console.error("Invalid latitude or longitude values.");
+      return;
+    }
+
+    const cep =
+      components.find((c) => c.types.includes("postal_code"))?.long_name || "";
+    const street =
+      components.find((c) => c.types.includes("route"))?.long_name || "";
+    const neighborhood =
+      components.find((c) => c.types.includes("sublocality_level_1"))
+        ?.long_name || "";
+    const city =
+      components.find((c) => c.types.includes("administrative_area_level_2"))
+        ?.long_name || "";
+    const country =
+      components.find((c) => c.types.includes("country"))?.long_name || "";
+
+    await validateCep(cep.replace(/\D/g, ""));
+
+    setMapLocation({
+      lat: lat,
+      lng: lng,
+      label: `${currentContact.number}`,
+    });
+
     // Atualiza apenas os campos relacionados ao endereço
     setCurrentContact((prev) => ({
       ...prev,
@@ -103,13 +159,30 @@ export default function Home() {
       cep: cep,
       neighborhood: neighborhood,
       city: city,
-      country: country
+      country: country,
+      latitude: lat,
+      longitude: lng,
+      number: currentContact.number,
     }));
   };
 
   const handleLogout = () => {
     logout();
     navigate("/");
+  };
+
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [accountPassword, setAccountPassword] = useState("");
+  const handleDeleteAccount = () => {
+    if (accountPassword === currentUser?.password) {
+      localStorage.clear();
+      logout();
+      navigate("/");
+      setDeleteAccountOpen(false);
+      setAccountPassword("");
+    } else {
+      setError("Senha incorreta!");
+    }
   };
 
   const validateContact = (contact, index) => {
@@ -143,6 +216,7 @@ export default function Home() {
       email: "",
       phone: "",
       cpf: "",
+      number: "",
     },
     isEditMode = false,
     index = -1
@@ -168,7 +242,6 @@ export default function Home() {
       handleCloseDialog();
     }
   };
-  
 
   const handleOpenDeleteConfirm = (index) => {
     setCurrentIndex(index);
@@ -203,7 +276,6 @@ export default function Home() {
       [name]: value,
     }));
   };
-  
 
   useEffect(() => {
     localStorage.setItem("contacts", JSON.stringify(contacts));
@@ -213,21 +285,81 @@ export default function Home() {
     localStorage.setItem("currentUser", JSON.stringify(currentUser));
   }, [currentUser]);
 
+  useEffect(() => {
+    if (openDialog) {
+      setLoadScriptKey((prevKey) => prevKey + 1); // Incrementa a chave para forçar o recarregamento do LoadScript
+    }
+  }, [openDialog]);
+
   return (
     <>
-      <Button
-        variant="contained"
-        color="secondary"
-        onClick={handleLogout}
-        sx={{ my: 2 }}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: "10px",
+        }}
       >
-        Logout
-      </Button>
+      <Button
+          variant="contained"
+          color="error"
+          onClick={() => setDeleteAccountOpen(true)}
+          sx={{ mb: 3 }}
+        >
+          Excluir Conta
+        </Button>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleLogout}
+          sx={{ mb: 3 }}
+        >
+          Logout
+        </Button>
+      </div>
+
+      <Dialog
+        open={deleteAccountOpen}
+        onClose={() => setDeleteAccountOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Confirmação de Exclusão de Conta</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Insira sua senha para confirmar a exclusão da conta.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Senha"
+            type="password"
+            fullWidth
+            value={accountPassword}
+            onChange={(e) => setAccountPassword(e.target.value)}
+            error={!!error}
+            helperText={error}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteAccountOpen(false)} color="primary">
+            Cancelar
+          </Button>
+          <Button onClick={handleDeleteAccount} color="secondary">
+            Confirmar Exclusão
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
+
+
 
       <Typography variant="h4" gutterBottom>
         Gerenciador de Contatos
       </Typography>
       <Button
+        style={{ marginBottom: "20px" }}
         variant="contained"
         color="primary"
         onClick={() => handleOpenDialog()}
@@ -237,29 +369,80 @@ export default function Home() {
 
       <Grid container spacing={2}>
         {/* Coluna de Contatos */}
+
         <Grid item xs={6}>
-          <Paper style={{ height: "100vh", padding: "1em" }}>
-            <Typography variant="h6">Contatos</Typography>
+          <Paper
+            style={{
+              height: "100vh",
+              padding: "1em",
+              border: "1px solid #bdbdbd",
+            }}
+            elevation={3}
+          >
+            <Typography variant="h6">Lista de Contatos</Typography>
             <List>
-              {contacts.map((contact, index) => (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "10px",
+                }}
+              >
+                <TextField
+                  label="Buscar por Nome ou CPF"
+                  variant="outlined"
+                  value={searchTerm}
+                  onChange={handleChangeSearchTerm}
+                  style={{ flexGrow: 1, marginRight: "10px" }}
+                />
+                <Button onClick={handleToggleSort} variant="outlined">
+                  <SortIcon
+                    style={{
+                      transform: sortAscending
+                        ? "rotate(0deg)"
+                        : "rotate(180deg)",
+                    }}
+                  />
+                </Button>
+              </div>
+              {filteredContacts.map((contact, index) => (
                 <ListItem key={index} divider>
                   <ListItemText
-                    primary={`${contact.nome} - CPF: ${contact.cpf}`}
+                    primary={`${contact.name} - CPF: ${contact.cpf}`}
                     secondary={
                       <React.Fragment>
                         <Typography component="span" variant="body2">
                           Email: {contact.email}, Telefone: {contact.telefone}
                         </Typography>
                         <Typography component="span" variant="body2">
-                          Endereço: {contact.address}, Número: {contact.number},
-                          Complemento: {contact.complement}
+                          <div>
+                            {`Endereço: ${
+                              contact.address ? contact.address + "," : ""
+                            } ${contact.number ? contact.number : ""}`}
+                          </div>
                         </Typography>
                         <Typography component="span" variant="body2">
-                          Bairro:{contact.neighborhood} Cidade:{" "}
-                          {contact.city}, País: {contact.country}
+                          <div>
+                            {contact.city} - {contact.neighborhood}
+                          </div>
+                        </Typography>
+                        <Typography component="span" variant="body2">
+                          <div>{contact.country}</div>
                         </Typography>
                       </React.Fragment>
                     }
+                    onClick={() => {
+                      setMapLocation({
+                        lat: contact.latitude,
+                        lng: contact.longitude,
+                        label: contact.number,
+                      });
+                      // Remova o alert se não desejar mais utilizá-lo
+                      alert(
+                        `Latitude: ${contact.latitude}, Longitude: ${contact.longitude}, Label: ${contact.number}`
+                      );
+                    }}
+                    style={{ cursor: "pointer" }}
                   />
                   <ListItemSecondaryAction>
                     <IconButton
@@ -283,9 +466,32 @@ export default function Home() {
 
         {/* Coluna do Mapa */}
         <Grid item xs={6}>
-          <Paper style={{ height: "100vh", padding: "1em" }}>
+          <Paper
+            style={{
+              height: "100vh",
+              padding: "1em",
+              border: "1px solid #bdbdbd",
+            }}
+            elevation={3}
+          >
             <Typography variant="h6">Mapa</Typography>
-            {/* Aqui você pode integrar o componente do mapa */}
+
+            <LoadScript
+              googleMapsApiKey="AIzaSyCaY_sFfo3DKewKbbSnYbNClmv4Q0DRqUg"
+              libraries={["places"]}
+            >
+              <GoogleMap
+                key={mapLocation.lat + mapLocation.lng}
+                mapContainerStyle={{ width: "100%", height: "90%" }}
+                center={{ lat: mapLocation.lat, lng: mapLocation.lng }}
+                zoom={16}
+              >
+                <Marker
+                  position={{ lat: mapLocation.lat, lng: mapLocation.lng }}
+                  label={mapLocation.label}
+                />
+              </GoogleMap>
+            </LoadScript>
           </Paper>
         </Grid>
       </Grid>
@@ -301,7 +507,7 @@ export default function Home() {
         </DialogTitle>
 
         <DialogContent id="dialog-content">
-          {["nome", "email", "telefone", "cpf"].map((field) => (
+          {["name", "email", "phone", "cpf"].map((field) => (
             <TextField
               key={field}
               margin="dense"
@@ -317,46 +523,52 @@ export default function Home() {
           ))}
 
           <LoadScript
+            key={loadScriptKey}
             googleMapsApiKey="AIzaSyCaY_sFfo3DKewKbbSnYbNClmv4Q0DRqUg"
             libraries={["places"]}
           >
-            <Grid container spacing={2}>
+            <Grid container spacing={2} style={{ marginTop: "10px" }}>
               <Grid item xs={12}>
                 <Autocomplete
                   onLoad={(autocomplete) => {
-                    setTimeout(() => {
-                      autocomplete.setFields([
-                        "address_components",
-                        "formatted_address",
-                        "geometry",
-                      ]);
-                      autocomplete.addListener("place_changed", () =>
-                        handlePlaceSelect(autocomplete)
-                      );
-                      // Ajustar o estilo do container do Autocomplete
-                      if (document.querySelector(".pac-container")) {
-                        document.querySelector(".pac-container").style.zIndex =
-                          "2000";
-                      }
-                    }, 100); // Delay pode ser ajustado conforme necessário
+                    autocomplete.setFields([
+                      "address_components",
+                      "formatted_address",
+                      "geometry",
+                    ]);
+                    autocomplete.addListener("place_changed", () =>
+                      handlePlaceSelect(autocomplete)
+                    );
+
+                    // Ajustar o estilo do container do Autocomplete
+                    if (document.querySelector(".pac-container")) {
+                      document.querySelector(".pac-container").style.zIndex =
+                        "2000";
+                    }
                   }}
                 >
                   <TextField
                     label="Buscar Endereço"
                     value={currentContact.fullAddress}
                     onChange={handleChangeContact}
+                    onFocus={() =>
+                      setCurrentContact((prev) => ({
+                        ...prev,
+                        fullAddress: "",
+                      }))
+                    } // Limpa o campo ao receber foco
                     fullWidth
                     variant="outlined"
+                    name="fullAddress"
                   />
                 </Autocomplete>
               </Grid>
               <Grid item xs={12}>
                 <TextField
-                  label="CEP"
+                  placeholder="CEP"
                   value={currentContact.cep}
                   fullWidth
                   variant="outlined"
-                  onChange={handleChangeContact}
                   InputProps={{
                     endAdornment: cepValid ? (
                       <InputAdornment position="end">
@@ -369,9 +581,8 @@ export default function Home() {
               </Grid>
               <Grid item xs={12}>
                 <TextField
-                  label="Endereço"
-                  value={contacts.address}
-                  onChange={handleChangeContact}
+                  placeholder="Endereço"
+                  value={currentContact.address}
                   fullWidth
                   variant="outlined"
                   disabled
@@ -380,26 +591,18 @@ export default function Home() {
               <Grid item xs={12}>
                 <TextField
                   label="Numero"
+                  name="number"
                   value={currentContact.number}
-                  onChange={(e) => setNumber(e.target.value)}
+                  onChange={handleChangeContact}
                   fullWidth
                   variant="outlined"
                 />
               </Grid>
+
               <Grid item xs={12}>
                 <TextField
-                  label="Complemento"
-                  value={complement}
-                  onChange={(e) => setComplement(e.target.value)}
-                  fullWidth
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  label="Bairro"
+                  placeholder="Bairro"
                   value={currentContact.neighborhood}
-                  onChange={handleChangeContact}
                   fullWidth
                   variant="outlined"
                   disabled
@@ -407,9 +610,8 @@ export default function Home() {
               </Grid>
               <Grid item xs={12}>
                 <TextField
-                  label="Cidade"
+                  placeholder="Cidade"
                   value={currentContact.city}
-                  onChange={handleChangeContact}
                   fullWidth
                   variant="outlined"
                   disabled
@@ -417,9 +619,8 @@ export default function Home() {
               </Grid>
               <Grid item xs={12}>
                 <TextField
-                  label="País"
+                  placeholder="País"
                   value={currentContact.country}
-                  onChange={handleChangeContact}
                   fullWidth
                   variant="outlined"
                   disabled
@@ -437,6 +638,7 @@ export default function Home() {
           </Button>
         </DialogActions>
       </Dialog>
+
       <Dialog
         open={deleteConfirmOpen}
         onClose={handleCloseDeleteConfirm}
