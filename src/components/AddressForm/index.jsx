@@ -4,7 +4,6 @@ import CheckIcon from '@mui/icons-material/Check';
 
 export default function FormTextField ({
   xs,
-  label,
   name,
   placeholder,
   value,
@@ -14,8 +13,7 @@ export default function FormTextField ({
 }) {
   return (
     <Grid item xs={xs}>
-      <TextField
-        
+      <TextField        
         placeholder={placeholder}
         value={value}
         onChange={onChange}

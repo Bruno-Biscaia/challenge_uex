@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Autocomplete, LoadScript } from "@react-google-maps/api";
 import { GoogleMap, Marker } from "@react-google-maps/api";
 import SortIcon from "@mui/icons-material/Sort";
-
 import {
   Typography,
   TextField,
@@ -85,8 +84,13 @@ export default function Home() {
     if (!currentContact.name.trim()) {
       errors.name = "Nome não pode ser vazio";
     }
-    if (contacts.some((contact, index) => contact.cpf === currentContact.cpf && index !== currentIndex)) {
-    errors.cpf = "CPF já cadastrado.";
+    if (
+      contacts.some(
+        (contact, index) =>
+          contact.cpf === currentContact.cpf && index !== currentIndex
+      )
+    ) {
+      errors.cpf = "CPF já cadastrado.";
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -256,7 +260,8 @@ export default function Home() {
   };
 
   const handleAddOrEditContact = () => {
-    if (validateContact()) { // Verifica se não há erros, incluindo CPF duplicado
+    if (validateContact()) {
+      // Verifica se não há erros, incluindo CPF duplicado
       const updatedContacts = editMode
         ? contacts.map((c, idx) => (idx === currentIndex ? currentContact : c))
         : [...contacts, currentContact];
@@ -265,7 +270,6 @@ export default function Home() {
       handleCloseDialog();
     }
   };
-  
 
   const handleOpenDeleteConfirm = (index) => {
     setCurrentIndex(index);
@@ -321,6 +325,7 @@ export default function Home() {
   //UseEffect para monitorar e controlar o carregamento das validaçoes de input
   useEffect(() => {
     validateContact();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentContact.cpf,
     currentContact.email,
@@ -329,14 +334,8 @@ export default function Home() {
   ]);
 
   return (
-    <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: "10px",
-        }}
-      >
+    <div className="containerHome">
+      <div className="buttonRow">
         <Button
           variant="contained"
           color="error"
@@ -359,7 +358,7 @@ export default function Home() {
         Gerenciador de Contatos
       </Typography>
       <Button
-        style={{ marginBottom: "20px" }}
+        className="addContactButton"
         variant="contained"
         color="primary"
         onClick={() => handleOpenDialog()}
@@ -367,47 +366,33 @@ export default function Home() {
         Adicionar Contato
       </Button>
 
-{/* Tabela com duas colunas para Contatos e Mapa */}
+      {/* Tabela com duas colunas para Contatos e Mapa */}
       <Grid container spacing={2}>
         {/* Coluna de Contatos */}
         <Grid item xs={6}>
-          <Paper
-            style={{
-              height: "100vh",
-              padding: "1em",
-              border: "1px solid #bdbdbd",
-            }}
-            elevation={3}
-          >
+          <Paper className="gridPaper" elevation={3}>
             <Typography variant="h6">Lista de Contatos</Typography>
             <List>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "10px",
-                }}
-              >
+              <div className="searchContactRow">
                 <TextField
+                  className="searchTextField"
                   label="Buscar por Nome ou CPF"
                   variant="outlined"
                   value={searchTerm}
                   onChange={handleChangeSearchTerm}
-                  style={{ flexGrow: 1, marginRight: "10px" }}
                 />
                 <Button onClick={handleToggleSort} variant="outlined">
                   <SortIcon
-                    style={{
-                      transform: sortAscending
-                        ? "rotate(0deg)"
-                        : "rotate(180deg)",
-                    }}
+                    className={`sortIcon ${
+                      sortAscending ? "" : "sortIconRotated"
+                    }`}
                   />
                 </Button>
               </div>
               {filteredContacts.map((contact, index) => (
                 <ListItem key={index} divider>
                   <ListItemText
+                    className="listItemText"
                     primary={`${contact.name} - CPF: ${contact.cpf}`}
                     secondary={
                       <React.Fragment>
@@ -438,7 +423,6 @@ export default function Home() {
                         label: contact.number,
                       });
                     }}
-                    style={{ cursor: "pointer" }}
                   />
                   <ListItemSecondaryAction>
                     <IconButton
@@ -462,14 +446,7 @@ export default function Home() {
 
         {/* Coluna do Mapa */}
         <Grid item xs={6}>
-          <Paper
-            style={{
-              height: "100vh",
-              padding: "1em",
-              border: "1px solid #bdbdbd",
-            }}
-            elevation={3}
-          >
+          <Paper className="gridPaper" elevation={3}>
             <Typography variant="h6">Mapa</Typography>
 
             <LoadScript
@@ -619,6 +596,6 @@ export default function Home() {
         handleConfirm={handleDeleteAccount}
         labelConfirm={"Confirmar Exclusão"}
       />
-    </>
+    </div>
   );
 }

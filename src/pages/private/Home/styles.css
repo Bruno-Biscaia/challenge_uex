@@ -1,4 +1,57 @@
 .pac-container {
-    z-index: 2000 !important; /* Valor mais alto que o do modal */
-  }
-  
+  z-index: 2000 !important;
+}
+
+.buttonRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.gridPaper {
+  height: 100vh;
+  padding: 1em;
+  border: 1px solid #bdbdbd;
+}
+
+.addContactButton {
+  margin: 10px 0px 20px 0px !important;
+  display: block; 
+}
+
+.searchContactRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 20px;
+}
+
+.searchTextField {
+  flex-grow: 1;
+  margin-right: 20px;
+}
+
+.sortIconRotated {
+  transform: rotate(180deg);
+}
+
+.modalContainer {
+  margin-top: 10px;
+}
+
+.sortIcon {
+  padding: 0;
+}
+
+.sortIconRotated {
+  transform: rotate(180deg);
+}
+
+.listItemText { 
+  cursor: pointer;
+}
+
+.containerHome{ 
+  padding: 20px;
+  background-color: #f4f4f4;
+}

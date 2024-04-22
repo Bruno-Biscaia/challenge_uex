@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { TextField, Button, Typography } from "@mui/material";
+import { Snackbar, Alert, Button, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import DataPersonalForm from "../../../components/DataPersonalForm";
+import "./styles.css";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -11,6 +13,13 @@ export default function SignUp() {
     confirmSenha: "",
   });
   const [formErrors, setFormErrors] = useState({});
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [alertSeverity, setAlertSeverity] = useState("success");
+
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
+  };
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -41,18 +50,21 @@ export default function SignUp() {
   function saveUserDetails(userDetails) {
     const users = JSON.parse(localStorage.getItem("users")) || [];
     if (!users.some((user) => user.email === userDetails.email)) {
-      // Verifica se o email já existe
       users.push({
-        nome: userDetails.nome,        
+        nome: userDetails.nome,
         email: userDetails.email,
-        senha: userDetails.senha, // Nota: Armazenar senhas em texto puro é inseguro, considere usar hashing.
+        senha: userDetails.senha,
       });
       localStorage.setItem("users", JSON.stringify(users));
-      alert("Usuário cadastrado com sucesso!");
-      navigate("/")
+      setSnackbarMessage("Usuário cadastrado com sucesso!");
+      setAlertSeverity("success");
+      setSnackbarOpen(true);
+      navigate("/");
       return true;
     } else {
-      alert("Um usuário com este e-mail já existe.");
+      setSnackbarMessage("Um usuário com este e-mail já existe.");
+      setAlertSeverity("error");
+      setSnackbarOpen(true);
       return false;
     }
   }
@@ -63,87 +75,50 @@ export default function SignUp() {
     setFormErrors(errors);
     if (Object.keys(errors).length === 0) {
       if (saveUserDetails(formValues)) {
-        // Limpa o formulário ou redireciona o usuário
         setFormValues({ nome: "", email: "", senha: "", confirmSenha: "" });
       }
     }
   }
 
+  const fieldsSignUp = ["nome", "email", "senha", "confirmSenha"];
+
   return (
-    <>
-      <Typography component="h1" variant="h5">
-        Cadastro
-      </Typography>
-      <form onSubmit={handleSubmit}>
-        <TextField
-          variant="outlined"
-          margin="normal"
-          required
-          fullWidth
-          id="nome"
-          label="Nome Completo"
-          name="nome"
-          autoComplete="name"
-          autoFocus
-          value={formValues.nome}
+    <div className="container">
+      <form onSubmit={handleSubmit} className="form">
+        <Typography component="h1" variant="h5" className="title">
+          Cadastro de Usuários
+        </Typography>
+        <DataPersonalForm
+          className="inputField"
+          fields={fieldsSignUp}
+          data={formValues}
           onChange={handleChange}
-          error={Boolean(formErrors.nome)}
-          helperText={formErrors.nome}
-        />
-        <TextField
-          variant="outlined"
-          margin="normal"
-          required
-          fullWidth
-          id="email"
-          label="Endereço de E-mail"
-          name="email"
-          autoComplete="email"
-          value={formValues.email}
-          onChange={handleChange}
-          error={Boolean(formErrors.email)}
-          helperText={formErrors.email}
-        />
-        <TextField
-          variant="outlined"
-          margin="normal"
-          required
-          fullWidth
-          name="senha"
-          label="Senha"
-          type="password"
-          id="senha"
-          autoComplete="new-password"
-          value={formValues.senha}
-          onChange={handleChange}
-          error={Boolean(formErrors.senha)}
-          helperText={formErrors.senha}
-        />
-        <TextField
-          variant="outlined"
-          margin="normal"
-          required
-          fullWidth
-          name="confirmSenha"
-          label="Confirme a Senha"
-          type="password"
-          id="confirmSenha"
-          autoComplete="new-password"
-          value={formValues.confirmSenha}
-          onChange={handleChange}
-          error={Boolean(formErrors.confirmSenha)}
-          helperText={formErrors.confirmSenha}
+          validationErrors={formErrors}
         />
         <Button
           type="submit"
           fullWidth
           variant="contained"
           color="primary"
-          sx={{ mt: 3, mb: 2 }}
+          className="button"
         >
           Cadastrar
         </Button>
       </form>
-    </>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={alertSeverity}
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </div>
   );
 }
