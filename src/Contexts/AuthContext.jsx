@@ -5,12 +5,11 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(() => {
     const savedUser = localStorage.getItem('currentUser');
-    return savedUser ? JSON.parse(savedUser) : null;  // Verifica se existe um usuário salvo e o retorna, caso contrário retorna null
+    return savedUser ? JSON.parse(savedUser) : null
   });
   
 
-  const login = (email, password) => {
-    const user = { email, password };
+  const login = (user) => {
     setCurrentUser(user); // Define o usuário atual
     localStorage.setItem('currentUser', JSON.stringify(user)); // Armazena o usuário no localStorage
     localStorage.setItem('isAuthenticated', 'true'); // Define o estado de autenticação
@@ -18,8 +17,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('currentUser'); //Remove o usuário no localStorage
+    localStorage.removeItem('isAuthenticated');//Remove o estado de autenticação
   };
 
   const isAuthenticated = () => {

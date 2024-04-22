@@ -29,18 +29,24 @@ import "./styles.css";
 import Modal from "../../../components/Modal";
 import DataPersonalForm from "../../../components/DataPersonalForm";
 import FormTextField from "../../../components/AddressForm";
+import { decryptData, encryptData } from "../../../utils/crypto";
 
 export default function Home() {
   const navigate = useNavigate();
 
   //Estados de contexto global
-  const { logout, currentUser } = useAuth();
+  const { logout, currentUser } = useAuth();  
+  const passwordDecrypt = decryptData(currentUser.senha) //senha descriptografada
 
-  //Estado que controla os contatos salvos
+  // Estado que controla os contatos salvos
   const [contacts, setContacts] = useState(() => {
-    const savedContacts = localStorage.getItem("contacts");
-    return savedContacts ? JSON.parse(savedContacts) : [];
-  });
+    if (currentUser?.id) {
+        const userContactsKey = `contacts-${currentUser.id}`;
+        const encryptedContacts = localStorage.getItem(userContactsKey);
+        return encryptedContacts ? decryptData(encryptedContacts, currentUser.id) : [];
+    }
+    return [];
+});
 
   //Estados que controlam as buscas e ordenaçoes da lista de contatos
   const [searchTerm, setSearchTerm] = useState("");
@@ -141,7 +147,6 @@ export default function Home() {
   const [mapLocation, setMapLocation] = useState({
     lat: -25.4296, // Coordenadas de Curitiba
     lng: -49.2716,
-    // label: "",
   });
 
   //Estado que controla abertura de modal
@@ -161,12 +166,22 @@ export default function Home() {
     longitude: "",
   });
 
-  //Estado que controla abertura do modal de exclusao de contas
+  //Estado que controlam modal de exclusao de contas
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [accountPassword, setAccountPassword] = useState("");
-  const handleDeleteAccount = () => {
-    if (accountPassword === currentUser?.password) {
-      localStorage.clear();
+  const handleDeleteAccount = () => {      
+    if (accountPassword === passwordDecrypt) {
+      // Carregar o array de usuários do localStorage
+      const users = JSON.parse(localStorage.getItem("users"));
+      // Filtra o array para excluir um suário
+      const updatedUsers = users.filter(user => user.id !== currentUser.id);
+      // Salvar o novvo array atualizado de volta no localStorage
+      localStorage.setItem("users", JSON.stringify(updatedUsers));
+  
+      // Remover a lista de contatos do usuário
+      const contactsKey = `contacts-${currentUser.id}`;
+      localStorage.removeItem(contactsKey);
+    
       logout();
       navigate("/");
       setDeleteAccountOpen(false);
@@ -181,6 +196,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
+ 
 
   const handlePlaceSelect = async (autocomplete) => {
     const place = autocomplete.getPlace();
@@ -261,15 +277,19 @@ export default function Home() {
 
   const handleAddOrEditContact = () => {
     if (validateContact()) {
-      // Verifica se não há erros, incluindo CPF duplicado
-      const updatedContacts = editMode
-        ? contacts.map((c, idx) => (idx === currentIndex ? currentContact : c))
-        : [...contacts, currentContact];
-      setContacts(updatedContacts);
-      localStorage.setItem("contacts", JSON.stringify(updatedContacts)); // Assegure-se de que os contatos atualizados são armazenados
-      handleCloseDialog();
+        // Verifica se não há erros, incluindo CPF duplicado
+        const updatedContacts = editMode
+            ? contacts.map((c, idx) => (idx === currentIndex ? currentContact : c))
+            : [...contacts, currentContact];
+        setContacts(updatedContacts);
+
+        if (currentUser?.id) {
+            const userContactsKey = `contacts-${currentUser.id}`;
+            localStorage.setItem(userContactsKey, JSON.stringify(updatedContacts));
+        }
+        handleCloseDialog();
     }
-  };
+};
 
   const handleOpenDeleteConfirm = (index) => {
     setCurrentIndex(index);
@@ -277,7 +297,7 @@ export default function Home() {
   };
 
   const handleDeleteContact = () => {
-    if (password === currentUser?.password) {
+    if (password === passwordDecrypt) {
       const newContacts = contacts.filter((_, i) => i !== currentIndex);
       setContacts(newContacts);
       setDeleteConfirmOpen(false);
@@ -305,10 +325,14 @@ export default function Home() {
     }));
   };
 
-  //UseEffect para monitorar e salvar os contatos
+  // UseEffect para monitorar e salvar os contatos
   useEffect(() => {
-    localStorage.setItem("contacts", JSON.stringify(contacts));
-  }, [contacts]);
+    if (currentUser?.id && contacts) {
+        const userContactsKey = `contacts-${currentUser.id}`;
+        const encryptedContacts = encryptData(contacts, currentUser.id);
+        localStorage.setItem(userContactsKey, encryptedContacts);
+    }
+}, [contacts, currentUser?.id]);
 
   //UseEffect para monitorar e salvar dados do usuário atual
   useEffect(() => {
@@ -397,7 +421,7 @@ export default function Home() {
                     secondary={
                       <React.Fragment>
                         <Typography component="span" variant="body2">
-                          Email: {contact.email}, Telefone: {contact.telefone}
+                          Email: {contact.email}, Telefone: {contact.phone}
                         </Typography>
                         <Typography component="span" variant="body2">
                           <div>

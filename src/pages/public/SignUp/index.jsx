@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { Snackbar, Alert, Button, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import DataPersonalForm from "../../../components/DataPersonalForm";
+import { v4 as uuidv4 } from 'uuid';
 import "./styles.css";
+import { decryptData, encryptData } from "../../../utils/crypto";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -49,25 +51,35 @@ export default function SignUp() {
 
   function saveUserDetails(userDetails) {
     const users = JSON.parse(localStorage.getItem("users")) || [];
-    if (!users.some((user) => user.email === userDetails.email)) {
-      users.push({
-        nome: userDetails.nome,
-        email: userDetails.email,
-        senha: userDetails.senha,
-      });
-      localStorage.setItem("users", JSON.stringify(users));
-      setSnackbarMessage("Usuário cadastrado com sucesso!");
-      setAlertSeverity("success");
-      setSnackbarOpen(true);
-      navigate("/");
-      return true;
+    const secretKey = userDetails.email;
+
+    if (!users.some((user) => decryptData(user.email, secretKey) === userDetails.email)) {
+        users.push({
+            id: encryptData(uuidv4(), secretKey),
+            nome: encryptData(userDetails.nome, secretKey),
+            email: encryptData(userDetails.email, secretKey),
+            senha: encryptData(userDetails.senha, secretKey)
+        });
+        localStorage.setItem("users", JSON.stringify(users));
+        setSnackbarMessage("Usuário cadastrado com sucesso!");
+        setAlertSeverity("success");
+        setSnackbarOpen(true);
+
+        setTimeout(() => {
+            setSnackbarOpen(false);  
+            navigate("/");          
+        }, 2000);
+        return true;
     } else {
-      setSnackbarMessage("Um usuário com este e-mail já existe.");
-      setAlertSeverity("error");
-      setSnackbarOpen(true);
-      return false;
+        setSnackbarMessage("Um usuário com este e-mail já existe.");
+        setAlertSeverity("error");
+        setSnackbarOpen(true);
+        setTimeout(() => {
+            setSnackbarOpen(false);
+        }, 3000);
+        return false;
     }
-  }
+}
 
   function handleSubmit(event) {
     event.preventDefault();

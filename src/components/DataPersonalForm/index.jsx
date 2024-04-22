@@ -2,6 +2,8 @@ import React from 'react';
 import TextField from '@mui/material/TextField';
 
 export default function DataPersonalForm({ fields, data, onChange, validationErrors }) {
+
+  
   return (
     <>
       {fields.map((field) => (
