@@ -2,7 +2,7 @@ import React from 'react';
 import { TextField, InputAdornment, Grid } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 
-export default function FormTextField ({
+export default function AdressForm ({
   xs,
   name,
   placeholder,
@@ -24,7 +24,7 @@ export default function FormTextField ({
         InputProps={{
           endAdornment: cepValid ? (
             <InputAdornment position="end">
-              <CheckIcon color="success" />
+              <CheckIcon data-testid="check-icon" color="success" />
             </InputAdornment>
           ) : null,
         }}

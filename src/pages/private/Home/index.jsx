@@ -28,7 +28,7 @@ import {
 import "./styles.css";
 import Modal from "../../../components/Modal";
 import DataPersonalForm from "../../../components/DataPersonalForm";
-import FormTextField from "../../../components/AddressForm";
+import AdressForm from "../../../components/AddressForm";
 import { decryptData, encryptData } from "../../../utils/crypto";
 
 export default function Home() {
@@ -549,7 +549,7 @@ export default function Home() {
                   </Autocomplete>
                 </Grid>
                 {fieldAddress.map((field) => (
-                  <FormTextField
+                  <AdressForm
                     key={field.name}
                     xs={field.xs}
                     label={field.label}

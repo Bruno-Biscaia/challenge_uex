@@ -8,7 +8,6 @@ export const AuthProvider = ({ children }) => {
     return savedUser ? JSON.parse(savedUser) : null
   });
   
-
   const login = (user) => {
     setCurrentUser(user); // Define o usuário atual
     localStorage.setItem('currentUser', JSON.stringify(user)); // Armazena o usuário no localStorage

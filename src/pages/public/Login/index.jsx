@@ -13,26 +13,31 @@ import "./styles.css";
 import { decryptData } from "../../../utils/crypto";
 
 export default function Login() {
+  //ESTADOS QUE CONTROLAM FORM(EMAIL E SENHA)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+
   const { login } = useAuth();
+  const navigate = useNavigate();
+
+  //ESTADOS QUE CONTROLAM A BARRA DE SNACKBAR (Mensagens)
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [alertSeverity, setAlertSeverity] = useState("success");
 
-  const handleCloseSnackbar = (event, reason) => {
+  const handleCloseSnackbar = (reason) => {
     if (reason === "clickaway") {
       return;
     }
     setSnackbarOpen(false);
   };
 
+  //FUNCAO DE AUTENTICAÇAO
   function authenticate(email, password) {
     const users = JSON.parse(localStorage.getItem("users")) || [];
     const user = users.find(user => {
-        const userEmail = decryptData(user.email, email); // Usando o e-mail como chave
-        const userPassword = decryptData(user.senha, email); // Usando o e-mail como chave
+        const userEmail = decryptData(user.email, email);
+        const userPassword = decryptData(user.senha, email);
         return userEmail === email && userPassword === password;
     });
     return user;
