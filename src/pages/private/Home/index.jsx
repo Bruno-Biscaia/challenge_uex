@@ -35,18 +35,18 @@ export default function Home() {
   const navigate = useNavigate();
 
   //Estados de contexto global
-  const { logout, currentUser } = useAuth();  
+  const { logout, currentUser } = useAuth();
   const passwordDecrypt = decryptData(currentUser.senha) //senha descriptografada
 
   // Estado que controla os contatos salvos
   const [contacts, setContacts] = useState(() => {
     if (currentUser?.id) {
-        const userContactsKey = `contacts-${currentUser.id}`;
-        const encryptedContacts = localStorage.getItem(userContactsKey);
-        return encryptedContacts ? decryptData(encryptedContacts, currentUser.id) : [];
+      const userContactsKey = `contacts-${currentUser.id}`;
+      const encryptedContacts = localStorage.getItem(userContactsKey);
+      return encryptedContacts ? decryptData(encryptedContacts, currentUser.id) : [];
     }
     return [];
-});
+  });
 
   //Estados que controlam as buscas e ordenaçoes da lista de contatos
   const [searchTerm, setSearchTerm] = useState("");
@@ -169,7 +169,7 @@ export default function Home() {
   //Estado que controlam modal de exclusao de contas
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [accountPassword, setAccountPassword] = useState("");
-  const handleDeleteAccount = () => {      
+  const handleDeleteAccount = () => {
     if (accountPassword === passwordDecrypt) {
       // Carregar o array de usuários do localStorage
       const users = JSON.parse(localStorage.getItem("users"));
@@ -177,11 +177,11 @@ export default function Home() {
       const updatedUsers = users.filter(user => user.id !== currentUser.id);
       // Salvar o novvo array atualizado de volta no localStorage
       localStorage.setItem("users", JSON.stringify(updatedUsers));
-  
+
       // Remover a lista de contatos do usuário
       const contactsKey = `contacts-${currentUser.id}`;
       localStorage.removeItem(contactsKey);
-    
+
       logout();
       navigate("/");
       setDeleteAccountOpen(false);
@@ -196,7 +196,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [password, setPassword] = useState("");
- 
+
 
   const handlePlaceSelect = async (autocomplete) => {
     const place = autocomplete.getPlace();
@@ -277,19 +277,19 @@ export default function Home() {
 
   const handleAddOrEditContact = () => {
     if (validateContact()) {
-        // Verifica se não há erros, incluindo CPF duplicado
-        const updatedContacts = editMode
-            ? contacts.map((c, idx) => (idx === currentIndex ? currentContact : c))
-            : [...contacts, currentContact];
-        setContacts(updatedContacts);
+      // Verifica se não há erros, incluindo CPF duplicado
+      const updatedContacts = editMode
+        ? contacts.map((c, idx) => (idx === currentIndex ? currentContact : c))
+        : [...contacts, currentContact];
+      setContacts(updatedContacts);
 
-        if (currentUser?.id) {
-            const userContactsKey = `contacts-${currentUser.id}`;
-            localStorage.setItem(userContactsKey, JSON.stringify(updatedContacts));
-        }
-        handleCloseDialog();
+      if (currentUser?.id) {
+        const userContactsKey = `contacts-${currentUser.id}`;
+        localStorage.setItem(userContactsKey, JSON.stringify(updatedContacts));
+      }
+      handleCloseDialog();
     }
-};
+  };
 
   const handleOpenDeleteConfirm = (index) => {
     setCurrentIndex(index);
@@ -328,11 +328,11 @@ export default function Home() {
   // UseEffect para monitorar e salvar os contatos
   useEffect(() => {
     if (currentUser?.id && contacts) {
-        const userContactsKey = `contacts-${currentUser.id}`;
-        const encryptedContacts = encryptData(contacts, currentUser.id);
-        localStorage.setItem(userContactsKey, encryptedContacts);
+      const userContactsKey = `contacts-${currentUser.id}`;
+      const encryptedContacts = encryptData(contacts, currentUser.id);
+      localStorage.setItem(userContactsKey, encryptedContacts);
     }
-}, [contacts, currentUser?.id]);
+  }, [contacts, currentUser?.id]);
 
   //UseEffect para monitorar e salvar dados do usuário atual
   useEffect(() => {
@@ -356,6 +356,11 @@ export default function Home() {
     currentContact.phone,
     currentContact.name,
   ]);
+
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    throw new Error("A variável de ambiente NEXT_PUBLIC_GOOGLE_MAPS_API_KEY não está definida");
+  }
 
   return (
     <div className="containerHome">
@@ -407,9 +412,8 @@ export default function Home() {
                 />
                 <Button onClick={handleToggleSort} variant="outlined">
                   <SortIcon
-                    className={`sortIcon ${
-                      sortAscending ? "" : "sortIconRotated"
-                    }`}
+                    className={`sortIcon ${sortAscending ? "" : "sortIconRotated"
+                      }`}
                   />
                 </Button>
               </div>
@@ -425,9 +429,8 @@ export default function Home() {
                         </Typography>
                         <Typography component="span" variant="body2">
                           <div>
-                            {`Endereço: ${
-                              contact.address ? contact.address + "," : ""
-                            } ${contact.number ? contact.number : ""}`}
+                            {`Endereço: ${contact.address ? contact.address + "," : ""
+                              } ${contact.number ? contact.number : ""}`}
                           </div>
                         </Typography>
                         <Typography component="span" variant="body2">
@@ -474,7 +477,7 @@ export default function Home() {
             <Typography variant="h6">Mapa</Typography>
 
             <LoadScript
-              googleMapsApiKey="AIzaSyCaY_sFfo3DKewKbbSnYbNClmv4Q0DRqUg"
+              googleMapsApiKey={apiKey}
               libraries={["places"]}
             >
               <GoogleMap
