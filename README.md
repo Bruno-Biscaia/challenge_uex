@@ -11,7 +11,7 @@ Este projeto é um **sistema de gerenciamento de contatos** que permite aos usu�
 - Consulta de endereços pelo CEP via **ViaCep API** ([github.com](https://github.com/Bruno-Biscaia/challenge_uex))
 - Exibição de localização no mapa usando **@react-google-maps/api** ([raw.githubusercontent.com](https://raw.githubusercontent.com/Bruno-Biscaia/challenge_uex/main/package.json))
 - Armazenamento de dados no **Local Storage**
-- Validação de CPF/CNPJ e máscara de campos para melhor UX
+- Validação de CPF/CNPJ e máscara de campos para melhor UX.
 
 ---
 
